@@ -36,7 +36,7 @@ struct MonitorInfo {
   bool primary = false;
 };
 
-// In the order ReXGlue's `monitor` setting numbers them: the primary display first on Windows, SDL's order on Linux.
+// In the order ReXGlue's `monitor` setting numbers them: the primary display first on Windows, SDL's order elsewhere.
 std::vector<MonitorInfo> ListMonitors();
 
 // The display a `monitor` setting names. Out of range values (0) are the primary display.
@@ -68,7 +68,7 @@ inline std::filesystem::path NextLogFile(const std::filesystem::path& folder, st
 // True while Shift is held. On Linux SDL only knows the keyboard once a window has focus.
 bool ShiftHeld();
 
-// Whether a native file picker exists: always on Windows, zenity or kdialog on Linux.
+// Whether a native file picker exists: always on Windows and macOS (osascript), zenity or kdialog on Linux.
 bool PackagePickerAvailable();
 
 // The window's logical size, shrunk so it stays within this share of the display's work area.
@@ -94,7 +94,7 @@ std::optional<WindowState> QueryWindowState(void* native_handle);
 void ApplyWindowPlacement(void* native_handle, const WindowPlacement& placement);
 
 // Gives the window the application icon. Windows takes it from the executable's resources already; on Linux SDL
-// does not, so the AppImage's icon is loaded.
+// does not, so the AppImage's icon is loaded. A no-op on macOS, where a plain executable has no icon of its own.
 void ApplyWindowIcon();
 
 // Names the application to the Linux desktop: SDL uses it as the Wayland app_id and the X11 WM_CLASS class. It has to

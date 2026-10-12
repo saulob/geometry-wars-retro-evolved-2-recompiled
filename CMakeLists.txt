@@ -6,9 +6,15 @@ project(geometry_wars_retro_evolved_2 VERSION 0.2.2 LANGUAGES C CXX)
 set(CMAKE_CXX_STANDARD 23)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-# Where tools/codegen.ps1 and tools/package-linux.sh unpack the pinned SDK.
+# Where tools/codegen.ps1, tools/codegen.sh and tools/package-linux.sh unpack the pinned SDK.
 if(WIN32)
     set(GW2_SDK_DIR "${CMAKE_CURRENT_SOURCE_DIR}/tools/rexglue/win-amd64")
+elseif(APPLE)
+    set(GW2_SDK_DIR "${CMAKE_CURRENT_SOURCE_DIR}/tools/rexglue/mac-arm64")
+    if(NOT EXISTS "${GW2_SDK_DIR}/rexgpu-xenos-patch.txt")
+        message(WARNING "The stock ReXGlue GPU plugin draws this game far too dark on Vulkan: "
+            "run tools/build-patched-rexgpu-xenos.sh (see docs/rexglue-gpu-patch.md)")
+    endif()
 else()
     set(GW2_SDK_DIR "${CMAKE_CURRENT_SOURCE_DIR}/tools/rexglue/linux-amd64")
 endif()
@@ -73,6 +79,9 @@ if(WIN32)
         OBJECT_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/packaging/icons/app-icon.ico")
     list(APPEND GW2_SOURCES src/launcher_platform_win32.cpp "${GW2_APP_RC}")
     add_executable(geometry_wars_retro_evolved_2 WIN32 ${GW2_SOURCES})
+elseif(APPLE)
+    list(APPEND GW2_SOURCES src/launcher_platform_mac.cpp)
+    add_executable(geometry_wars_retro_evolved_2 ${GW2_SOURCES})
 else()
     list(APPEND GW2_SOURCES src/launcher_platform_linux.cpp)
     add_executable(geometry_wars_retro_evolved_2 ${GW2_SOURCES})
@@ -82,6 +91,9 @@ rexglue_setup_target(geometry_wars_retro_evolved_2 GPU_PLUGINS xenos)
 target_link_libraries(geometry_wars_retro_evolved_2 PRIVATE trg::launcher)
 if(WIN32)
     target_link_libraries(geometry_wars_retro_evolved_2 PRIVATE bcrypt shcore)
+elseif(APPLE)
+    # The SDK copies the GPU plugin beside the program after each link; relink when the patched plugin is installed.
+    set_property(TARGET geometry_wars_retro_evolved_2 APPEND PROPERTY LINK_DEPENDS "$<TARGET_FILE:rex::gpu-xenos>")
 else()
     # The SDK stages the runtime beside the program only on Windows and macOS; the RPATH is $ORIGIN.
     add_custom_command(TARGET geometry_wars_retro_evolved_2 POST_BUILD
@@ -157,6 +169,8 @@ add_custom_command(TARGET gw2_physical_heap_stress POST_BUILD
         "$<TARGET_FILE_DIR:gw2_physical_heap_stress>"
     VERBATIM
 )
-if(NOT WIN32)
+if(APPLE)
+    set_target_properties(gw2_physical_heap_stress PROPERTIES BUILD_RPATH "@executable_path")
+elseif(NOT WIN32)
     set_target_properties(gw2_physical_heap_stress PROPERTIES BUILD_RPATH "$ORIGIN")
 endif()

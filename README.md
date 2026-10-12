@@ -160,6 +160,8 @@ In an existing clone, run `git submodule update --init --recursive`.
 
 The Linux AppImage is built on Linux or WSL with `tools/package-linux.sh`, after the steps above have generated the C++. See [docs/linux.md](docs/linux.md).
 
+An experimental native macOS build (Apple Silicon) is built from source with shell versions of these steps. See [docs/macos.md](docs/macos.md).
+
 Both packaging scripts are local only: they build and write files under `dist/`, and never upload, tag or publish anything. The release version is the `project()` VERSION in `CMakeLists.txt`.
 
 How the launcher, settings and installer work is described in [docs/launcher.md](docs/launcher.md). The other technical notes:
@@ -171,8 +173,10 @@ How the launcher, settings and installer work is described in [docs/launcher.md]
 - [Offline Xbox Live services](docs/offline-live.md)
 - [Cheats](docs/cheats.md)
 - [ReXGlue runtime patch](docs/rexglue-runtime-patch.md)
+- [ReXGlue GPU plugin patch](docs/rexglue-gpu-patch.md)
 - [Saves and settings: the portable user_data folder](docs/user-data.md)
 - [Linux and Steam Deck](docs/linux.md)
+- [macOS](docs/macos.md)
 
 ## Credits
 
