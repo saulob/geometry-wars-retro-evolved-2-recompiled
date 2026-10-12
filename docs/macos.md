@@ -2,7 +2,8 @@
 
 > **Experimental.** The macOS build is a native Apple Silicon (arm64) program, built from source. There is no
 > packaged release or `.app` bundle yet. So far it has been run on one MacBook Air (M1, 8 GB, macOS 26.6): the
-> launcher, PLAY and the main menu work. Gameplay, controllers and the package installer have not been tried yet.
+> launcher, PLAY, the menus and a game with a Google Stadia Controller (through SDL) work. The package installer has
+> not been tried yet.
 > Reports are welcome.
 
 The macOS build uses the same code as the Linux build: ReXGlue SDK 0.10.0's `mac-arm64` runtime, the Xenos GPU
@@ -71,14 +72,10 @@ Window placement, monitor numbering and the frame limiter use the same code as o
 
 ## Known limits
 
-- **About 30 FPS instead of 60** on the M1 MacBook Air, in the main menu. MoltenVK logs
-  `Metal does not support disabling primitive restart` about once per frame for the same pipeline, which matches
-  [rexglue-sdk#507](https://github.com/rexglue/rexglue-sdk/issues/507) (the swapchain pipeline is created again every
-  frame). Not investigated yet.
-- **Hang after a window restart.** When PLAY restarts the game in a new window, the old process can stay behind at
-  100% CPU, in `Runtime::Shutdown` > `InputSystem::Shutdown` > `~MnkInputDriver` >
-  `WindowedAppContext::CallInUIThreadSynchronous` in the SDK. It has to be force quit. Closing the game normally
-  works.
+- **About 25 to 30 FPS instead of 60**, with noticeable input lag, on the M1 MacBook Air. The game is playable.
+  MoltenVK logs `Metal does not support disabling primitive restart` about once per frame for the same pipeline,
+  which matches [rexglue-sdk#507](https://github.com/rexglue/rexglue-sdk/issues/507): the presenter waits for the GPU
+  and creates its swapchain pipeline again every frame. The fix is in the runtime, which this build does not patch yet.
 - **Retina.** The swapchain is created at the display's full resolution (scale 2.0).
 - MoltenVK has no geometry shaders, so the SDK uses its fallback paths for point sprites, rectangle lists and quads.
-  The main menu draws correctly. Gameplay has not been checked.
+  Nothing looked wrong in the menus or in a first game.
