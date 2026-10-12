@@ -1,5 +1,6 @@
 #pragma once
 
+#include <cstdlib>
 #include <filesystem>
 #include <functional>
 #include <memory>
@@ -229,11 +230,18 @@ class GeometryWarsRetroEvolved2App : public rex::ReXApp {
     }
   }
 
+  // The new instance owns the game from here. This one exits the way ReXApp::OnClosing does, without the subsystem
+  // teardown: on macOS that teardown never returned (the input system's shutdown faulted in a loop at 100% CPU), and the
+  // old window stayed on screen, black and unresponsive. Deferred, so the launcher has saved its placement first.
   bool RestartInNewWindow() {
     if (!gw2::RelaunchSelf(L"--gw2_skip_launcher=true")) {
       return false;
     }
-    app_context().CallInUIThreadDeferred([this] { app_context().QuitFromUIThread(); });
+    app_context().CallInUIThreadDeferred([] {
+      REXLOG_INFO("Restarted in a new window; hard-exiting this process.");
+      rex::FlushLogging();
+      std::_Exit(0);
+    });
     return true;
   }
 
