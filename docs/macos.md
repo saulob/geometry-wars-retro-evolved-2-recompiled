@@ -98,3 +98,5 @@ Window placement, monitor numbering and the frame limiter use the same code as o
   change.
 - MoltenVK has no geometry shaders, so the SDK uses its fallback paths for point sprites, rectangle lists and quads.
   Nothing looked wrong in the menus or in a first game.
+- **Fullscreen.** Switching the game to fullscreen (F11, or Display mode set to Borderless Fullscreen) has shown a
+  black window, and switching back did not bring the picture back. Windowed mode works. Not investigated yet.
