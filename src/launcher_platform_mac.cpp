@@ -135,7 +135,10 @@ std::optional<PreShowResult> TakePreShowResult() {
   return std::nullopt;
 }
 
-// Sizes are SDL window coordinates, the units ReXGlue sizes its window in (logical size times the scale).
+// Sizes are points: SDL's display coordinates on macOS, and the units ReXGlue sizes its window in here (it leaves the
+// backing scale to Cocoa, see WindowSDL::OpenImpl). So the scale stays 1.0. A Retina display reports a content scale
+// of 1.0 and a pixel density of 2.0, but SDL_GetWindowDisplayScale reports 2.0, and dividing by that would halve the
+// window and the sizes the launcher offers.
 std::vector<MonitorInfo> ListMonitors() {
   std::vector<MonitorInfo> monitors;
   int count = 0;
@@ -152,9 +155,6 @@ std::vector<MonitorInfo> ListMonitors() {
     if (SDL_GetDisplayUsableBounds(displays[i], &usable) && usable.w > 0 && usable.h > 0) {
       found.work_width = usable.w;
       found.work_height = usable.h;
-    }
-    if (const float scale = SDL_GetDisplayContentScale(displays[i]); scale > 0.0f) {
-      found.scale = scale;
     }
     found.primary = displays[i] == primary;
     monitors.push_back(found);
