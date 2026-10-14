@@ -79,7 +79,7 @@ class GeometryWarsRetroEvolved2App : public rex::ReXApp {
                                                     shipped_config_);
     settings_->Capture();
     settings_->MarkWindowCreated();
-    gw2::FitWindowToDisplay();
+    gw2::SettleStartupCvars();
     SetGuestFrameStats(DebugOverlayFrameStats);
     PlaceLauncherWindow();
   }
@@ -230,9 +230,8 @@ class GeometryWarsRetroEvolved2App : public rex::ReXApp {
     }
   }
 
-  // The new instance owns the game from here. This one exits the way ReXApp::OnClosing does, without the subsystem
-  // teardown: on macOS that teardown never returned (the input system's shutdown faulted in a loop at 100% CPU), and the
-  // old window stayed on screen, black and unresponsive. Deferred, so the launcher has saved its placement first.
+  // The new process owns the game, so this one exits the way ReXApp::OnClosing does, without the subsystem teardown.
+  // Deferred, so the launcher has saved its placement first.
   bool RestartInNewWindow() {
     if (!gw2::RelaunchSelf(L"--gw2_skip_launcher=true")) {
       return false;

@@ -52,7 +52,7 @@ The script refuses any package whose title ID is not `0x584108FF` and refuses a 
 
 ```powershell
 .\tools\codegen.ps1      # SDK check, XEX check, codegen into generated\default
-.\tools\build.ps1        # configure (first time or -Clean) and build build\geometry_wars_retro_evolved_2.exe
+.\tools\build.ps1        # prepare the patched ReXGlue runtime when needed, configure and build build\geometry_wars_retro_evolved_2.exe
 .\tools\build.ps1 -Run   # build, then launch with --game_data_root and --user_data_root
 ```
 

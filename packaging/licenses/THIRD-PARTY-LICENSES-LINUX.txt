@@ -1,9 +1,9 @@
 THIRD-PARTY LICENSES - LINUX
 ============================
 
-The Linux AppImage ships the Linux libraries of ReXGlue SDK 0.10.0: librexgpu-xenos.so is the unmodified
-release library, and librexruntime.so is built from the unmodified 0.10.0 source with one patch to
-PhysicalHeap::Release (patches/rexglue-sdk in the project repository). They include every component in THIRD-PARTY-LICENSES.txt that applies
+The Linux AppImage ships the Linux libraries of ReXGlue SDK 0.10.0, built from the unmodified 0.10.0 source with
+the patches in patches/rexglue-sdk in the project repository, to PhysicalHeap::Release, the SPIR-V shader translator
+and the RenderDoc detection. They include every component in THIRD-PARTY-LICENSES.txt that applies
 to them, plus the components below, which the Windows DLLs do not contain. Commits are the versions that
 ReXGlue SDK 0.10.0 pins.
 

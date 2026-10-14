@@ -4,6 +4,11 @@
   lld-link, CMake and Ninja. Run tools\codegen.ps1 first.
   -Run launches the game with the extracted game files in game\extracted.
 
+.DESCRIPTION
+  First makes sure tools\rexglue holds the ReXGlue runtime and GPU plugin this branch needs for -Config (see
+  patches\rexglue-sdk\patches.txt), rebuilding them with build-patched-rexruntime.ps1 when it does not. The build
+  then stages them next to the executable, and this script stops unless the staged copies match.
+
 .EXAMPLE
   .\tools\build.ps1              # incremental build only
   .\tools\build.ps1 -Clean       # clean configure and build
@@ -22,7 +27,9 @@ param(
 $ErrorActionPreference = 'Stop'
 
 $Root = Split-Path $PSScriptRoot -Parent
-$BuildDir = if (-not $BuildDir) { Join-Path $Root 'build' } elseif ([IO.Path]::IsPathRooted($BuildDir)) { $BuildDir } else { Join-Path $Root $BuildDir }
+. (Join-Path $PSScriptRoot 'rexruntime-patch.ps1')
+$SdkRoot = Join-Path $Root 'tools\rexglue\win-amd64'
+$BuildDir =if (-not $BuildDir) { Join-Path $Root 'build' } elseif ([IO.Path]::IsPathRooted($BuildDir)) { $BuildDir } else { Join-Path $Root $BuildDir }
 $GameData = Join-Path $Root 'game\extracted'
 $UserData = Join-Path $BuildDir 'user_data'
 $Exe = Join-Path $BuildDir 'geometry_wars_retro_evolved_2.exe'
@@ -49,7 +56,9 @@ foreach ($tool in @($VsDevCmd, $Clang, $ClangXX, $LldLink, $CMake, $Ninja)) {
     if (-not (Test-Path $tool)) { throw "Required tool not found: $tool" }
 }
 
-$SavedEnv = [Environment]::GetEnvironmentVariables()
+Update-PatchedRuntime $SdkRoot $Config $Jobs
+
+$SavedEnv =[Environment]::GetEnvironmentVariables()
 try {
     # Keep MSYS2's gcc, cmake and ninja out of the build.
     $env:PATH = (($env:PATH -split ';') | Where-Object { $_ -and $_ -notmatch '\\msys64\\' -and $_ -notmatch '^C:\\msys64' }) -join ';'
@@ -108,12 +117,18 @@ foreach ($file in $required) {
     $path = Join-Path $BuildDir $file
     if (-not (Test-Path $path)) { throw "Build output is missing $path" }
 }
+$problems = @(Test-PatchedRuntime $SdkRoot $Config) + @(Test-StagedRuntime $SdkRoot $BuildDir $Config)
+if ($problems.Count) {
+    foreach ($problem in $problems) { Write-Host "  $problem" -ForegroundColor Red }
+    throw 'The ReXGlue runtime and GPU plugin next to the executable are not the ones this branch needs'
+}
 
 Write-Host ''
 Write-Host '===================================================='
 Write-Host ' BUILD SUCCESSFUL'
 Write-Host '===================================================='
 Write-Host "  $Exe"
+Write-Host "  $((Get-RuntimeDllNames $Config) -join ', ') match tools\rexglue"
 Write-Host ''
 
 if (-not $Run) { return }

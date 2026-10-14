@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Extracts an Xbox 360 STFS (LIVE, PIRS or CON) package into an empty folder on macOS or Linux.
+# Extracts an Xbox 360 STFS (LIVE, PIRS or CON) package into an empty folder on Linux.
 # The package must carry the Geometry Wars: Retro Evolved 2 title ID.
 #
 #   tools/extract_stfs.sh <package> game/extracted

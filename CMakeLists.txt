@@ -1,7 +1,7 @@
 # SDK boilerplate lives in generated/rexglue.cmake.
 
 cmake_minimum_required(VERSION 3.25)
-project(geometry_wars_retro_evolved_2 VERSION 0.2.2 LANGUAGES C CXX)
+project(geometry_wars_retro_evolved_2 VERSION 0.2.3 LANGUAGES C CXX)
 
 set(CMAKE_CXX_STANDARD 23)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -9,12 +9,6 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 # Where tools/codegen.ps1, tools/codegen.sh and tools/package-linux.sh unpack the pinned SDK.
 if(WIN32)
     set(GW2_SDK_DIR "${CMAKE_CURRENT_SOURCE_DIR}/tools/rexglue/win-amd64")
-elseif(APPLE)
-    set(GW2_SDK_DIR "${CMAKE_CURRENT_SOURCE_DIR}/tools/rexglue/mac-arm64")
-    if(NOT EXISTS "${GW2_SDK_DIR}/rexgpu-xenos-patch.txt")
-        message(WARNING "The stock ReXGlue GPU plugin draws this game far too dark on Vulkan: "
-            "run tools/build-patched-rexgpu-xenos.sh (see docs/rexglue-gpu-patch.md)")
-    endif()
 else()
     set(GW2_SDK_DIR "${CMAKE_CURRENT_SOURCE_DIR}/tools/rexglue/linux-amd64")
 endif()
@@ -79,9 +73,6 @@ if(WIN32)
         OBJECT_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/packaging/icons/app-icon.ico")
     list(APPEND GW2_SOURCES src/launcher_platform_win32.cpp "${GW2_APP_RC}")
     add_executable(geometry_wars_retro_evolved_2 WIN32 ${GW2_SOURCES})
-elseif(APPLE)
-    list(APPEND GW2_SOURCES src/launcher_platform_mac.cpp)
-    add_executable(geometry_wars_retro_evolved_2 ${GW2_SOURCES})
 else()
     list(APPEND GW2_SOURCES src/launcher_platform_linux.cpp)
     add_executable(geometry_wars_retro_evolved_2 ${GW2_SOURCES})
@@ -91,9 +82,6 @@ rexglue_setup_target(geometry_wars_retro_evolved_2 GPU_PLUGINS xenos)
 target_link_libraries(geometry_wars_retro_evolved_2 PRIVATE trg::launcher)
 if(WIN32)
     target_link_libraries(geometry_wars_retro_evolved_2 PRIVATE bcrypt shcore)
-elseif(APPLE)
-    # The SDK copies the GPU plugin beside the program after each link; relink when the patched plugin is installed.
-    set_property(TARGET geometry_wars_retro_evolved_2 APPEND PROPERTY LINK_DEPENDS "$<TARGET_FILE:rex::gpu-xenos>")
 else()
     # The SDK stages the runtime beside the program only on Windows and macOS; the RPATH is $ORIGIN.
     add_custom_command(TARGET geometry_wars_retro_evolved_2 POST_BUILD
@@ -103,6 +91,35 @@ else()
         VERBATIM
     )
 endif()
+
+# Every build checks that tools/rexglue holds the runtime and GPU plugin this branch's patches need, and that the
+# copies next to the program are those; tools/build.ps1 and tools/build.sh prepare them when they are not.
+if(WIN32)
+    find_program(GW2_POWERSHELL NAMES pwsh powershell REQUIRED)
+    set(GW2_REXGLUE_CHECK "${GW2_POWERSHELL}" -NoProfile -ExecutionPolicy Bypass
+        -File "${CMAKE_CURRENT_SOURCE_DIR}/tools/build-patched-rexruntime.ps1" -Check -Config $<CONFIG>)
+    set(GW2_REXGLUE_STAGED -Staged)
+else()
+    find_program(GW2_BASH bash REQUIRED)
+    set(GW2_REXGLUE_CHECK "${GW2_BASH}" "${CMAKE_CURRENT_SOURCE_DIR}/tools/build-patched-rexruntime.sh"
+        --check "${GW2_SDK_DIR}" --config $<CONFIG>)
+    set(GW2_REXGLUE_STAGED --staged)
+endif()
+get_property(_multi_config GLOBAL PROPERTY GENERATOR_IS_MULTI_CONFIG)
+if(NOT _multi_config AND NOT CMAKE_BUILD_TYPE MATCHES "^(Debug|RelWithDebInfo|Release)$")
+    message(FATAL_ERROR "Set CMAKE_BUILD_TYPE to Debug, RelWithDebInfo or Release (the presets, tools/build.ps1 "
+        "and tools/build.sh do): the ReXGlue runtime and GPU plugin are prepared and checked per configuration")
+endif()
+add_custom_target(gw2_rexglue_check COMMAND ${GW2_REXGLUE_CHECK} VERBATIM)
+add_dependencies(geometry_wars_retro_evolved_2 gw2_rexglue_check)
+add_custom_target(gw2_rexglue_staging ALL
+    COMMAND ${CMAKE_COMMAND} -E copy_if_different "$<TARGET_FILE:rex::runtime>" "$<TARGET_FILE:rex::gpu-xenos>"
+        "$<TARGET_FILE_DIR:geometry_wars_retro_evolved_2>"
+    COMMAND ${GW2_REXGLUE_CHECK} ${GW2_REXGLUE_STAGED} "$<TARGET_FILE_DIR:geometry_wars_retro_evolved_2>"
+    VERBATIM
+)
+add_dependencies(gw2_rexglue_staging geometry_wars_retro_evolved_2)
+
 target_compile_definitions(geometry_wars_retro_evolved_2 PRIVATE
     GW2_PORT_VERSION="${PROJECT_VERSION}"
     GW2_TRG_LAUNCHER_VERSION="${GW2_TRG_VERSION}")
@@ -160,17 +177,35 @@ else()
     target_link_libraries(gw2_trg_test_support PUBLIC Threads::Threads)
 endif()
 
-# Allocator stress test, not part of the default build: cmake --build <dir> --target gw2_physical_heap_stress
+# Tests that need the ReXGlue runtime, not part of the default build: cmake --build <dir> --target <name>
 add_executable(gw2_physical_heap_stress EXCLUDE_FROM_ALL tests/physical_heap_stress.cpp)
 target_link_libraries(gw2_physical_heap_stress PRIVATE rex::runtime)
-add_custom_command(TARGET gw2_physical_heap_stress POST_BUILD
-    COMMAND ${CMAKE_COMMAND} -E copy_if_different
-        "$<TARGET_FILE:rex::runtime>"
-        "$<TARGET_FILE_DIR:gw2_physical_heap_stress>"
-    VERBATIM
-)
-if(APPLE)
-    set_target_properties(gw2_physical_heap_stress PROPERTIES BUILD_RPATH "@executable_path")
-elseif(NOT WIN32)
-    set_target_properties(gw2_physical_heap_stress PROPERTIES BUILD_RPATH "$ORIGIN")
+add_executable(gw2_restart_state_tests EXCLUDE_FROM_ALL tests/restart_state_tests.cpp src/launcher_cvars.cpp
+    src/launcher_settings.cpp src/launcher_options.cpp)
+target_include_directories(gw2_restart_state_tests PRIVATE src)
+target_compile_options(gw2_restart_state_tests PRIVATE -Wall -Wextra)
+target_compile_definitions(gw2_restart_state_tests PRIVATE GW2_SOURCE_DIR="${CMAKE_CURRENT_SOURCE_DIR}")
+target_link_libraries(gw2_restart_state_tests PRIVATE rex::runtime gw2_trg_test_support)
+set(_runtime_tests gw2_physical_heap_stress gw2_restart_state_tests)
+# The fake librenderdoc.so goes into renderdoc/, out of reach of the runtime's $ORIGIN RUNPATH.
+if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
+    add_library(gw2_fake_renderdoc SHARED EXCLUDE_FROM_ALL tests/fake_renderdoc.cpp)
+    set_target_properties(gw2_fake_renderdoc PROPERTIES OUTPUT_NAME renderdoc
+        LIBRARY_OUTPUT_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/renderdoc")
+    add_executable(gw2_renderdoc_detect_tests EXCLUDE_FROM_ALL tests/renderdoc_detect_tests.cpp)
+    target_link_libraries(gw2_renderdoc_detect_tests PRIVATE rex::runtime rex::renderdoc ${CMAKE_DL_LIBS})
+    target_compile_options(gw2_renderdoc_detect_tests PRIVATE -Wall -Wextra)
+    add_dependencies(gw2_renderdoc_detect_tests gw2_fake_renderdoc)
+    list(APPEND _runtime_tests gw2_renderdoc_detect_tests)
 endif()
+foreach(_runtime_test ${_runtime_tests})
+    add_custom_command(TARGET ${_runtime_test} POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E copy_if_different
+            "$<TARGET_FILE:rex::runtime>"
+            "$<TARGET_FILE_DIR:${_runtime_test}>"
+        VERBATIM
+    )
+    if(NOT WIN32)
+        set_target_properties(${_runtime_test} PROPERTIES BUILD_RPATH "$ORIGIN")
+    endif()
+endforeach()

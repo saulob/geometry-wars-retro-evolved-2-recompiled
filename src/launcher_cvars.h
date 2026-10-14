@@ -44,4 +44,8 @@ bool TakeSkipLauncher();
 // Caps the requested window size to the display the `monitor` setting names. The requested size stays as saved.
 void FitWindowToDisplay();
 
+// Called once the startup configuration is loaded and before the window exists: fits the window and starts the
+// restart tracking from nothing.
+void SettleStartupCvars();
+
 }  // namespace gw2

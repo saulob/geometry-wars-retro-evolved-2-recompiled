@@ -36,5 +36,5 @@
     "launcher",
     "high-fps"
   ],
-  "notes": "Public native Windows release with an experimental Linux/Steam Deck AppImage (not yet tested on real hardware). TRG launcher, high frame rates, rendering up to 4x resolution, local profile and progression, offline scores, leaderboards and achievements, cheats with an in-game menu, and portable user data"
+  "notes": "Public native Windows release with an experimental Linux/Steam Deck AppImage (limited real-hardware testing so far). TRG launcher, high frame rates, rendering up to 4x resolution, local profile and progression, offline scores, leaderboards and achievements, cheats with an in-game menu, and portable user data"
 }

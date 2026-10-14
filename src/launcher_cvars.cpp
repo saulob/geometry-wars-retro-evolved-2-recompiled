@@ -67,14 +67,15 @@ void FitWindowToDisplay() {
     return;
   }
   REXLOG_INFO("Window reduced from {}x{} to {}x{} to fit the display", width, height, fit_width, fit_height);
-  // The window does not exist yet, so the cap needs no restart. The SDK still marks every write to these restart-only
-  // cvars as pending, which made PLAY open a new window every time on a display too small for the requested size.
-  const bool restart_was_pending = !rex::cvar::GetPendingRestartFlags().empty();
   rex::cvar::SetFlagByName(kWindowWidthKey, std::to_string(fit_width));
   rex::cvar::SetFlagByName(kWindowHeightKey, std::to_string(fit_height));
-  if (!restart_was_pending) {
-    rex::cvar::ClearPendingRestartFlags();
-  }
+}
+
+void SettleStartupCvars() {
+  FitWindowToDisplay();
+  // The SDK marks a restart-only cvar as pending whenever a config file sets it, but nothing it configures exists
+  // yet. Starting from none makes PLAY restart only for what the launcher changes.
+  rex::cvar::ClearPendingRestartFlags();
 }
 
 }  // namespace gw2

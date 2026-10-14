@@ -13,7 +13,7 @@
   .\tools\package-release.ps1              # incremental Release build, then package
   .\tools\package-release.ps1 -Clean       # clean Release build first
   .\tools\package-release.ps1 -SkipBuild   # package the existing build-release\ output
-  .\tools\package-release.ps1 -VerifyOnly dist\GeometryWarsRetroEvolved2-v0.2.2-windows-x64
+  .\tools\package-release.ps1 -VerifyOnly dist\GeometryWarsRetroEvolved2-v0.2.3-windows-x64
 #>
 param(
     [switch]$Clean,
@@ -111,15 +111,15 @@ $ShaFile = Join-Path $Dist "$Name.sha256"
 Write-Host ''
 Write-Host "Geometry Wars: Retro Evolved 2 $Version - Windows release package (local only)"
 
-# rexruntime.dll must be the project's patched build, rexgpu-xenos.dll the stock release file.
-$runtimeProblems = Test-PatchedRuntime $SdkRoot
-if ($runtimeProblems.Count) { Write-Problems $runtimeProblems; throw 'tools\rexglue does not hold the patched runtime (run tools\build-patched-rexruntime.ps1)' }
-
 if (-not $SkipBuild) {
     $build = @{ Config = 'Release'; BuildDir = $ReleaseBuild }
     if ($Clean) { $build.Clean = $true }
     & (Join-Path $PSScriptRoot 'build.ps1') @build
 }
+
+# The same check the normal build makes: tools\rexglue matches this branch's patches and the release build uses it.
+$runtimeProblems = @(Test-PatchedRuntime $SdkRoot 'Release') + @(Test-StagedRuntime $SdkRoot $ReleaseBuild 'Release')
+if ($runtimeProblems.Count) { Write-Problems $runtimeProblems; throw 'tools\rexglue or the release build does not hold the runtime and GPU plugin this branch needs (build without -SkipBuild)' }
 
 foreach ($leaf in @('geometry_wars_retro_evolved_2.exe', 'rexruntime.dll', 'rexgpu-xenos.dll', 'geometry_wars_retro_evolved_2.toml')) {
     if (-not (Test-Path (Join-Path $ReleaseBuild $leaf))) { throw "Release build output is missing $leaf (run without -SkipBuild)" }

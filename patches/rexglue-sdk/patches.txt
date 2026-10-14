@@ -1,0 +1,5 @@
+# The ReXGlue patches, applied in this order: file, the platforms whose builds apply it (windows, linux) and the
+# ReXGlue targets it changes (rexruntime, rexgpu-xenos). A patch to a public header changes both targets.
+0001-physical-release-order.patch        windows,linux   rexruntime
+0002-spirv-texture-exp-adjust.patch      linux           rexgpu-xenos
+0003-renderdoc-detect-loaded-only.patch  linux           rexruntime,rexgpu-xenos
