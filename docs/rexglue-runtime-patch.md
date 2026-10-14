@@ -43,13 +43,13 @@ build keeps the stock plugin.
 ## Which patches each platform uses
 
 [patches/rexglue-sdk/patches.txt](../patches/rexglue-sdk/patches.txt) lists every patch with the platforms that apply it
-and the ReXGlue targets it changes. It is the only list; the Windows and Linux scripts both read it.
+and the ReXGlue targets it changes. It is the only list; the Windows script and the Linux and macOS script read it.
 
-| Patch | Target | Windows | Linux | Why |
-| --- | --- | --- | --- | --- |
-| `0001-physical-release-order` | `rexruntime` | yes | yes | Shared runtime code. |
-| `0002-spirv-texture-exp-adjust` | `rexgpu-xenos` | no | yes | Fixes the SPIR-V (Vulkan) translator. The Windows plugin is built without Vulkan, and its DXBC translator already reads the right field. |
-| `0003-renderdoc-detect-loaded-only` | `rexruntime`, `rexgpu-xenos` | no | yes | Stops the detection from loading a discoverable `librenderdoc.so`; changes a public header. |
+| Patch | Target | Windows | Linux | macOS | Why |
+| --- | --- | --- | --- | --- | --- |
+| `0001-physical-release-order` | `rexruntime` | yes | yes | yes | Shared runtime code. |
+| `0002-spirv-texture-exp-adjust` | `rexgpu-xenos` | no | yes | yes | Fixes the SPIR-V (Vulkan) translator. The Windows plugin is built without Vulkan, and its DXBC translator already reads the right field. |
+| `0003-renderdoc-detect-loaded-only` | `rexruntime`, `rexgpu-xenos` | no | yes | no | Stops the detection from loading a discoverable `librenderdoc.so`; changes a public header. RenderDoc has no macOS build. |
 
 A target that no patch for the platform changes must be the stock release file. Patch numbers must be unique, every
 `.patch` file must be listed, and the list must be in numeric order; the scripts stop otherwise. A patch for one
@@ -58,8 +58,9 @@ platform can be named `NNNN-name.<platform>.patch` for clarity, but only `patche
 ## How the normal build gets the patched files
 
 Windows: `.\tools\build.ps1` (any `-Config`) first checks `tools\rexglue\win-amd64` for that configuration and, when
-it does not match the branch, runs `tools\build-patched-rexruntime.ps1 -Config <config>`. Linux: `tools/build.sh`
-does the same with `tools/build-patched-rexruntime.sh <sdk> --config <config>`. The scripts fetch v0.10.0 into
+it does not match the branch, runs `tools\build-patched-rexruntime.ps1 -Config <config>`. Linux and macOS:
+`tools/build.sh` does the same with `tools/build-patched-rexruntime.sh <sdk> --config <config>`, for
+`tools/rexglue/linux-amd64` or `tools/rexglue/mac-arm64`. The scripts fetch v0.10.0 into
 `out/rexglue-sdk-src` the first time (git and network access), check the pinned commit, reset every tracked file of
 that tree (so another branch's patches cannot stay), apply this platform's patches, build the patched targets for the
 configuration, install them, and put the stock files back for the other targets. Each configuration is prepared the
@@ -70,7 +71,7 @@ patch with its SHA-256 and targets, the patched targets, the compiler (and MSVC 
 followed by the SHA-256 of every installed file. Any other input makes the installed files stale, so switching to a
 branch with other patches rebuilds them on the next build.
 
-The CMake build itself checks the same thing on Windows and Linux: before the program is compiled it stops when the
+The CMake build itself checks the same thing on Windows, Linux and macOS: before the program is compiled it stops when the
 SDK does not match (also for a plain `cmake --build`), and after linking it copies the runtime and GPU plugin next to
 the program and stops unless those copies are the SDK's. `tools/package-release.ps1` and `tools/package-linux.sh` run
 the same checks again on what they package; they are not needed to get the patched files. `tools/package-linux.sh`
@@ -81,6 +82,12 @@ The Linux build also needs, besides the packages in [linux.md](linux.md), the SD
 `libgtk-3-dev libx11-dev libx11-xcb-dev libxext-dev libxrandr-dev libxcursor-dev libxi-dev libxfixes-dev
 libxrender-dev libxss-dev libvulkan-dev libwayland-dev libwayland-bin wayland-protocols libxkbcommon-dev
 libdecor-0-dev libasound2-dev libpulse-dev libpipewire-0.3-dev libgl1-mesa-dev libudev-dev pkg-config`.
+
+On macOS the Command Line Tools (Apple clang), CMake and Ninja are enough; the SDK builds MoltenVK and the Vulkan loader
+from its own submodules without Xcode. The libraries are built with the SDK's `mac-arm64` preset and keep its
+`@loader_path` rpaths. The first build fetches about 400 MB of sources and takes a few minutes on an M1; the script
+checks the Mach-O load commands and rpaths with `otool` where Linux uses `readelf`. It runs with the `/bin/bash` 3.2
+that macOS ships.
 
 The Release libraries are compiled with `-ffile-prefix-map`, and the scripts refuse a Release file that embeds the
 build folder or equals the stock one. The binaries are not bit-for-bit reproducible; what is verified is the inputs
@@ -98,8 +105,10 @@ fails. With the stock runtime it fails; with the patched one it passes.
 .\tools\build-patched-rexruntime.ps1 -StressTest -SkipBuild    # test the installed runtime
 ```
 
-On Linux: `tools/build-patched-rexruntime.sh --stress <sdk dir> <build dir>`, with a configured Release project build
-in `<build dir>`. To compare, run `-Restore` first and repeat the test with the stock runtime.
+On Linux and macOS: `tools/build-patched-rexruntime.sh --stress <sdk dir> <build dir>`, with a configured Release
+project build in `<build dir>`. To compare, run `-Restore` first and repeat the test with the stock runtime. On a MacBook
+Air (M1), the stock `mac-arm64` runtime failed 26,979 and 18,270 releases on the two views; the patched one failed
+none.
 
 ## RenderDoc detection test
 

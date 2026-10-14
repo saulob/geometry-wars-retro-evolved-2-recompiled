@@ -1,7 +1,7 @@
 # ReXGlue GPU plugin patch
 
 The Vulkan backend of ReXGlue **v0.10.0**'s Xenos GPU plugin (`librexgpu-xenos`) draws this game far too dark: the
-lines are dim and most of the glow is gone. The Linux build uses that backend
+lines are dim and most of the glow is gone. The Linux and macOS builds use that backend
 ([#1](https://github.com/saulob/geometry-wars-retro-evolved-2-recompiled/issues/1)); Xenia with Vulkan shows the same
 ([game-compatibility #144](https://github.com/xenia-project/game-compatibility/issues/144)). The Direct3D 12 backend,
 which the Windows build uses, is not affected.
@@ -34,6 +34,13 @@ stops while the SDK or the copy next to the program is the stock plugin (see
 plugin build stops unless the plugin links the runtime, exports `rex_gpu_abi_version` and `rex_gpu_create`, and exports
 the same strong symbols as the release plugin (the weak ones depend on the C++ library headers), and unless no library
 has a RUNPATH outside `$ORIGIN`. The patched Linux plugin has not been run on Linux yet.
+
+## macOS
+
+The normal macOS build (`tools/build.sh`) does the same with the `mac-arm64` SDK and the macOS patches (0001 and this
+one), with the same checks: `otool` reads the load commands and the rpaths, which must stay under `@loader_path`. On a
+MacBook Air (M1) the menus and a game have their full brightness and glow with the patched plugin; with the stock one
+they are as dim as in #1.
 
 ## Windows
 

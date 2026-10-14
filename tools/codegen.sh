@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 # Downloads the pinned ReXGlue SDK, checks game/extracted/default.xex and generates the recompiled C++ sources
-# into generated/default. The Linux counterpart of tools/codegen.ps1.
+# into generated/default. The Linux and macOS counterpart of tools/codegen.ps1.
 #
-#   tools/codegen.sh    SDK for this machine: linux-amd64 (REXGLUE_PLATFORM overrides it)
+#   tools/codegen.sh    SDK for this machine: linux-amd64 or mac-arm64 (REXGLUE_PLATFORM overrides it)
 #
 # Needs curl or wget, and unzip or python3.
 set -euo pipefail
@@ -15,16 +15,18 @@ MANIFEST=geometry_wars_retro_evolved_2_manifest.toml
 
 fail() { echo "ERROR: $*" >&2; exit 1; }
 
-sha256() { sha256sum "$1" | cut -d' ' -f1; }
+sha256() { if command -v sha256sum >/dev/null; then sha256sum "$1"; else shasum -a 256 "$1"; fi | cut -d' ' -f1; }
 
 if [ -z "${REXGLUE_PLATFORM:-}" ]; then
   case "$(uname -s)-$(uname -m)" in
     Linux-x86_64) REXGLUE_PLATFORM=linux-amd64 ;;
+    Darwin-arm64) REXGLUE_PLATFORM=mac-arm64 ;;
     *) fail "no ReXGlue SDK for $(uname -s) $(uname -m); set REXGLUE_PLATFORM" ;;
   esac
 fi
 case "$REXGLUE_PLATFORM" in
   linux-amd64) SDK_SHA256=0388edb3f8fb1444f1b0ad5d440cb02d9690ac20a76b04fd6b7dcc19f59328a6 ;;
+  mac-arm64) SDK_SHA256=1192638b51a6963aa6a4f24b77ebcb90c16f7fd0b91b311e11a90100f5274326 ;;
   *) fail "unknown REXGLUE_PLATFORM $REXGLUE_PLATFORM" ;;
 esac
 

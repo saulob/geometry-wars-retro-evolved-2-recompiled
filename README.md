@@ -160,6 +160,8 @@ In an existing clone, run `git submodule update --init --recursive`.
 
 On Linux, `tools/build.sh` is the normal build and `tools/package-linux.sh` makes the AppImage. See [docs/linux.md](docs/linux.md).
 
+An experimental native macOS build (Apple Silicon) uses the same `tools/build.sh`, built from source; there is no macOS package yet. See [docs/macos.md](docs/macos.md).
+
 Both packaging scripts are local only: they build and write files under `dist/`, and never upload, tag or publish anything. The release version is the `project()` VERSION in `CMakeLists.txt`.
 
 How the launcher, settings and installer work is described in [docs/launcher.md](docs/launcher.md). The other technical notes:
@@ -174,6 +176,7 @@ How the launcher, settings and installer work is described in [docs/launcher.md]
 - [ReXGlue GPU plugin patch](docs/rexglue-gpu-patch.md)
 - [Saves and settings: the portable user_data folder](docs/user-data.md)
 - [Linux and Steam Deck](docs/linux.md)
+- [macOS](docs/macos.md)
 
 ## Credits
 
