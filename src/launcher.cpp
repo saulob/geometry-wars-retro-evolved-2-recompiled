@@ -541,6 +541,22 @@ class LauncherDialog final : public rex::ui::ImGuiDialog {
               kTextureFilteringKey, "-1", ToTrgOptions(TextureFilteringChoices()), 6);
     ui.Choice("Bloom", "Controls the intensity of the game's original bloom/glow effect.", kBloomKey, "original",
               ToTrgOptions(BloomChoices()));
+    ui.Toggle("Smooth glow",
+              "Keeps the full precision of the glow between the game's bloom passes. Off is the original, where the "
+              "faint glow around stars and lights ends in flat, hard-edged steps. A change restarts the game once "
+              "when you press Play.",
+              kSmoothGlowKey, kSmoothGlowDefault, "Off (Original)", "On");
+    ui.Toggle("HDR",
+              "Outputs HDR, where the neon light the game adds up goes brighter than white. Needs Windows HDR on for "
+              "the display. Turns Smooth glow on. A change restarts the game once when you press Play.",
+              kHdrKey, false, "Off", "On");
+    ui.Combo("HDR paper white",
+             "Brightness of the game's normal white and of the overlays in HDR. Windows SDR brightness matches "
+             "the game without HDR, set by the SDR content brightness slider in Windows' HDR settings.",
+             kHdrPaperWhiteKey, kHdrPaperWhiteAuto, ToTrgOptions(HdrPaperWhiteChoices()));
+    ui.Combo("HDR peak brightness",
+             "The brightest the highlights go in HDR. Display's peak uses what the display reports to Windows.",
+             kHdrPeakKey, kHdrPeakAuto, ToTrgOptions(HdrPeakChoices()));
     ui.EndRows();
   }
 

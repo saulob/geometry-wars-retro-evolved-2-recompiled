@@ -52,6 +52,8 @@ class the game's code or `share/rexglue/rex_app.cpp` uses (`Window`, the public 
 | [0036-internal-render-scale](../patches/rexglue-sdk/0036-internal-render-scale.patch) | both | GPU plugin | 0036 | the `gw2_internal_render_scale` cvar and the split of the render resolution into the host render target scale and the whole scale of the EDRAM, resolves and textures; sizes, viewport, scissor and the pixel position of the shader translators (render target cache base, `draw.cpp`, texture cache base, DXBC and SPIR-V translators) |
 | [0037-d3d12-internal-render-scale](../patches/rexglue-sdk/0037-d3d12-internal-render-scale.windows.patch) | Windows | GPU plugin | 0037 | host render target sizes, transfers, clears and viewport at the host scale, and the EDRAM dump sampling the smaller render targets (D3D12) |
 | [0038-vulkan-internal-render-scale](../patches/rexglue-sdk/0038-vulkan-internal-render-scale.linux.patch) | Linux | GPU plugin | 0038 | the same for the Vulkan render target cache and command processor |
+| [0039-d3d12-gpu-frame-trace](../patches/rexglue-sdk/0039-d3d12-gpu-frame-trace.windows.patch) | Windows | GPU plugin | - | the `gpu_frame_trace_interval` cvar (off by default): every draw, resolve and swap of one frame in N is logged with its render target, blend and texture formats (D3D12) |
+| [0040-d3d12-hdr-float-resolve-copies](../patches/rexglue-sdk/0040-d3d12-hdr-float-resolve-copies.windows.patch) | Windows | both | - | float resolve copies (`float_resolve_copies`) in the D3D12 render target and texture caches; HDR output (`hdr_output` and the `hdr_*` cvars) in the presenter, the immediate drawer, the swap of the command processor and the pipeline cache ([Why 0040](#why-0040)) |
 | Pins | | | | [patches/rexglue-sdk/baseline.env](../patches/rexglue-sdk/baseline.env): tag, commit and the stock runtime and plugin hashes |
 
 There is no 0034: Hard Corps' 0034 is this project's 0002. 0036 to 0038 are Hard Corps' patches with the cvar renamed
@@ -398,6 +400,35 @@ What does not follow the host scale, on purpose:
 The pixel position (`ps_param_gen`) is divided by the host scale; the resolve fill, texture offsets and scaled texture
 coordinates keep the draw resolution scale. The viewport and the scissor are rounded outward to whole host pixels and
 the vertex transform follows the rounded viewport edges.
+
+## Why 0040
+
+The game draws in floating-point render targets (`k_2_10_10_10_FLOAT`, 7e3, hosted as `R16G16B16A16_FLOAT`), but every
+resolve into a texture goes through the 32-bit EDRAM layout and the guest texture format: the scene into
+`k_2_10_10_10` (10-bit unorm), each bloom level into `k_16_16_16_16`. The bloom levels are drawn in 7e3, whose
+smallest step above zero, 1/512 in linear light, is about 15/255 after the final gamma conversion. Faint bloom tails
+end in that step, which is the flat, hard-edged glow around the stars. `gpu_frame_trace_interval` (0039) found the
+passes; the frame is about 70 draws and 57 resolves.
+
+- **Float resolve copies** (`float_resolve_copies`, on in the shipped config). A resolve from a render target whose
+  host format is `R16G16B16A16_FLOAT` and that alone owns the resolved area from its origin, single-sampled, is also
+  copied by a compute shader into an `R16G16B16A16_FLOAT` texture: the render target times the copy's exponent bias,
+  red and blue swapped like the copy, without clamping. A texture bound with the same base address, a format of the
+  2_10_10_10 or 16_16_16_16 families, no mips and a size within the copy is sampled from the float copy instead
+  (a smaller texture gets a copy of the top-left part, so normalized coordinates still match). The guest memory is
+  written as before. A resolve overlapping a float copy drops it. Direct texture copies (0022) are not used from a
+  promoted render target.
+- **HDR output** (`hdr_output`, read once at startup). The swap chain is FP16 in the scRGB color space, the guest
+  output and the paint pipelines are FP16, the paint effect is bilinear without dithering, and the UI is linearized
+  to the paper white. `k_2_10_10_10` render targets are `R16G16B16A16_FLOAT` on the host, with clamps where the
+  transfer and dump shaders pack them into 10 bits. In the final composite pixel shader (`FCF4C1A80AEC4B2C`), the
+  clamps of the scene-plus-bloom sums (scalar results of ALU slots 14, 16 and 19, vector result of 20) are removed;
+  the clamps that feed its scene darkening factor stay. The patched microcode has its own hash. The swap converts
+  the float copy of the front buffer (or the front buffer texture when there is none) to scRGB: the part above 1.0
+  is multiplied by `hdr_highlight_strength`, gamma 2.2 relative to `hdr_paper_white_nits` (0 = the SDR white level
+  Windows reports for the display), rolled off towards `hdr_peak_nits` (0 = the display's `MaxLuminance`) per
+  channel, or by the brightest channel as `hdr_highlight_saturation` goes to 1. The float copy is read with the
+  front buffer's component mapping. Without Windows HDR on the display, paper white and peak are SDR white.
 
 ## Game code that goes with the patches
 

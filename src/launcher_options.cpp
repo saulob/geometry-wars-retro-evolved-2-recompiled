@@ -137,6 +137,22 @@ std::vector<SettingChoice> BloomChoices() {
           {std::string(bloom::ModeName(bloom::Mode::kOff)), "Off"}};
 }
 
+std::vector<SettingChoice> HdrPaperWhiteChoices() {
+  std::vector<SettingChoice> choices{{kHdrPaperWhiteAuto, "Windows SDR brightness (Recommended)"}};
+  for (const int nits : {100, 150, 200, 250, 300, 400}) {
+    choices.push_back({std::to_string(nits), std::to_string(nits) + " nits"});
+  }
+  return choices;
+}
+
+std::vector<SettingChoice> HdrPeakChoices() {
+  std::vector<SettingChoice> choices{{kHdrPeakAuto, "Display's peak (Recommended)"}};
+  for (const int nits : {400, 600, 800, 1000, 1500, 2000, 4000}) {
+    choices.push_back({std::to_string(nits), std::to_string(nits) + " nits"});
+  }
+  return choices;
+}
+
 std::vector<SettingChoice> FrameRateChoices() {
   std::vector<SettingChoice> choices;
   for (const int fps : kFrameRates) {

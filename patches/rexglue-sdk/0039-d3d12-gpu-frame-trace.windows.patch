@@ -1,0 +1,115 @@
+diff --git a/src/graphics/d3d12/command_processor.cpp b/src/graphics/d3d12/command_processor.cpp
+index 3da81c6..53b04ea 100644
+--- a/src/graphics/d3d12/command_processor.cpp
++++ b/src/graphics/d3d12/command_processor.cpp
+@@ -47,8 +47,18 @@ REXCVAR_DEFINE_BOOL(d3d12_submit_on_primary_buffer_end, true, "GPU/D3D12",
+                     "Submit command list when PM4 primary buffer ends")
+     .lifecycle(rex::cvar::Lifecycle::kHotReload);
+ 
++REXCVAR_DEFINE_INT32(gpu_frame_trace_interval, 0, "GPU",
++                     "Log every draw, resolve and swap of one frame every this many frames (0 = off)");
++
+ namespace rex::graphics::d3d12 {
+ 
++namespace {
++bool gpu_frame_trace_active = false;
++uint64_t gpu_frame_trace_swaps = 0;
++}  // namespace
++
++bool IsGpuFrameTraceActive() { return gpu_frame_trace_active; }
++
+ // Generated with `xb buildshaders`.
+ namespace shaders {
+ #include "../shaders/bytecode/d3d12_5_1/apply_gamma_pwl_cs.h"
+@@ -1906,6 +1916,21 @@ void D3D12CommandProcessor::IssueSwap(uint32_t frontbuffer_ptr, uint32_t frontbu
+ 
+   if (!graphics_system_)
+     return;
++  {
++    const auto& trace_regs = *register_file_;
++    auto trace_fetch = trace_regs.GetTextureFetch(0);
++    if (gpu_frame_trace_active) {
++      REXGPU_INFO("TRACE swap frontbuffer={:08X} {}x{} fetch0 format={} base={:08X}",
++                  frontbuffer_ptr, frontbuffer_width, frontbuffer_height,
++                  uint32_t(trace_fetch.format), trace_fetch.base_address << 12);
++    }
++    int32_t trace_interval = REXCVAR_GET(gpu_frame_trace_interval);
++    ++gpu_frame_trace_swaps;
++    gpu_frame_trace_active = trace_interval > 0 && gpu_frame_trace_swaps % uint64_t(trace_interval) == 0;
++    if (gpu_frame_trace_active) {
++      REXGPU_INFO("TRACE frame begin (swap {})", gpu_frame_trace_swaps);
++    }
++  }
+   ui::Presenter* presenter = graphics_system_->presenter();
+   if (!presenter) {
+     REXGPU_ERROR("IssueSwap: presenter is null");
+@@ -2407,6 +2432,35 @@ bool D3D12CommandProcessor::IssueDraw(xenos::PrimitiveType primitive_type, uint3
+                                     normalized_color_mask, *vertex_shader)) {
+     return false;
+   }
++  if (gpu_frame_trace_active) {
++    auto surface_info = regs.Get<reg::RB_SURFACE_INFO>();
++    std::string rts;
++    for (uint32_t i = 0; i < 4; ++i) {
++      if (!((normalized_color_mask >> (i * 4)) & 0xF)) {
++        continue;
++      }
++      auto color_info = regs.Get<reg::RB_COLOR_INFO>(reg::RB_COLOR_INFO::rt_register_indices[i]);
++      auto blend = regs.Get<reg::RB_BLENDCONTROL>(reg::RB_BLENDCONTROL::rt_register_indices[i]);
++      rts += fmt::format(" rt{}[base={} fmt={} bias={} mask={:X} blend={:08X}]", i,
++                         color_info.color_base | (color_info.color_base_bit_11 << 11),
++                         uint32_t(color_info.color_format), int32_t(color_info.color_exp_bias),
++                         (normalized_color_mask >> (i * 4)) & 0xF, blend.value);
++    }
++    std::string texs;
++    if (pixel_shader) {
++      for (const auto& binding : pixel_shader->texture_bindings()) {
++        auto fetch = regs.GetTextureFetch(binding.fetch_constant);
++        texs += fmt::format(" t{}[fmt={} base={:08X} {}x{}]", binding.fetch_constant,
++                            uint32_t(fetch.format), fetch.base_address << 12,
++                            fetch.size_2d.width + 1, fetch.size_2d.height + 1);
++      }
++    }
++    REXGPU_INFO("TRACE draw prim={} verts={} pitch={} msaa={} colorctl={:08X} vs={:016X} ps={:016X}{}{}",
++                uint32_t(primitive_type), index_count, uint32_t(surface_info.surface_pitch),
++                uint32_t(surface_info.msaa_samples), regs[XE_GPU_REG_RB_COLORCONTROL],
++                vertex_shader->ucode_data_hash(), pixel_shader ? pixel_shader->ucode_data_hash() : 0,
++                rts, texs);
++  }
+ 
+   // Create the pipeline (for this, need the actually used render target formats
+   // from the render target cache), translating the shaders - doing this now to
+diff --git a/src/graphics/d3d12/render_target_cache.cpp b/src/graphics/d3d12/render_target_cache.cpp
+index 1519943..6fab26d 100644
+--- a/src/graphics/d3d12/render_target_cache.cpp
++++ b/src/graphics/d3d12/render_target_cache.cpp
+@@ -1250,6 +1250,8 @@ void D3D12RenderTargetCache::WriteEdramUintPow2UAVDescriptor(D3D12_CPU_DESCRIPTO
+                                 D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
+ }
+ 
++bool IsGpuFrameTraceActive();
++
+ bool D3D12RenderTargetCache::Resolve(const memory::Memory& memory, D3D12SharedMemory& shared_memory,
+                                      D3D12TextureCache& texture_cache,
+                                      uint32_t& written_address_out, uint32_t& written_length_out) {
+@@ -1300,6 +1302,20 @@ bool D3D12RenderTargetCache::Resolve(const memory::Memory& memory, D3D12SharedMe
+           texture_copy_result == ResolveTextureCopyResult::kEligible
+               ? texture_cache.PrepareResolveTextureCopies(texture_copy)
+               : 0;
++      if (IsGpuFrameTraceActive()) {
++        REXGPU_INFO(
++            "TRACE resolve edram base={} fmt={} msaa={} depth={} -> dest={:08X} len={:X} fmt={} "
++            "{}x{} shader={} texcopy={}",
++            uint32_t(resolve_info.color_edram_info.base_tiles),
++            uint32_t(resolve_info.color_edram_info.format),
++            uint32_t(resolve_info.color_edram_info.msaa_samples),
++            uint32_t(resolve_info.IsCopyingDepth()), uint32_t(resolve_info.copy_dest_base),
++            uint32_t(resolve_info.copy_dest_extent_length),
++            uint32_t(resolve_info.copy_dest_info.copy_dest_format),
++            uint32_t(resolve_info.coordinate_info.width_div_8) << 3,
++            uint32_t(resolve_info.height_div_8) << 3,
++            uint32_t(copy_shader), uint32_t(texture_copy_result));
++      }
+       TextureCache::DeferredResolveTexture deferred_texture =
+           texture_copy_count == 1 && CanDeferResolveWriteback(texture_copy, texture_cache,
+                                                               texture_cache.resolve_copy_texture(0))

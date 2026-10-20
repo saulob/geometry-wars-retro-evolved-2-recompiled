@@ -37,3 +37,5 @@
 0036-internal-render-scale.patch                         windows,linux   rexgpu-xenos
 0037-d3d12-internal-render-scale.windows.patch           windows         rexgpu-xenos
 0038-vulkan-internal-render-scale.linux.patch            linux           rexgpu-xenos
+0039-d3d12-gpu-frame-trace.windows.patch                 windows         rexgpu-xenos
+0040-d3d12-hdr-float-resolve-copies.windows.patch        windows         rexruntime,rexgpu-xenos

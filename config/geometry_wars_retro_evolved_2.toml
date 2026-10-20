@@ -2,6 +2,8 @@
 # Full (purchased) license for XamContentGetLicenseMask; the SDK default 0 means trial.
 license_mask = 1
 gpu_plugin = "xenos"
+# Resolves keep the precision and range of the floating-point render targets (Smooth glow in the launcher).
+float_resolve_copies = true
 
 # Launcher and game window, centered on the primary display. Size is in logical pixels
 # (scaled by Windows DPI) and is reduced to fit the display. The game sets the guest video mode from the launcher's
