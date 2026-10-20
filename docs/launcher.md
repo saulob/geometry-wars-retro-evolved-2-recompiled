@@ -72,6 +72,10 @@ Aspect Ratio is the shape the game renders in. It is not the Window size and doe
 | Multisampling | 2x MSAA, 4x MSAA (Compatibility) (default 2x MSAA) | `gw2_msaa_compatibility` (`false`, `true`) |
 | Texture filtering | Game, Off, 2x, 4x, 8x, 16x | `anisotropic_override` (`-1`, `0`, `2`–`5`) |
 | Bloom | Original, Reduced, Off (default Original) | `gw2_bloom` (`original`, `reduced`, `off`) |
+| Smooth glow (Windows) | Off (Original), On (default On) | `float_resolve_copies` (`false`, `true`) |
+| HDR (Windows) | Off, On (default Off) | `hdr_output` (`false`, `true`) |
+| HDR paper white (Windows) | Windows SDR brightness (Recommended), 100 to 400 nits | `hdr_paper_white_nits` (`0` = the SDR content brightness of Windows) |
+| HDR peak brightness (Windows) | Display's peak (Recommended), 400 to 4000 nits | `hdr_peak_nits` (`0` = the display's peak) |
 
 Graphics card lists Automatic and the hardware GPUs that can create a Direct3D 12 device, by their DXGI names; software adapters are left out, and two GPUs with the same name get their index added. Automatic is the default, also for settings files without the key: it leaves `d3d12_adapter` alone, so ReXGlue keeps preferring the high-performance GPU (0027). A chosen GPU passes its `EnumAdapters1` index as `d3d12_adapter`; a saved GPU that is no longer present falls back to Automatic and is shown as "not found". The device is created before the launcher shows, so a change restarts the game once when you press PLAY, like a window change. The log shows `Graphics card: Automatic` or `Graphics card: <name> (adapter N)`. Linux has no such row: Vulkan keeps its automatic discrete-GPU preference (0026).
 
@@ -83,6 +87,10 @@ Internal render resolution draws the game at a share of the Render resolution an
 Multisampling only decides how the render targets the game itself draws with 2x MSAA are drawn on the host: native 2x MSAA, or 4x MSAA using two of its samples, for GPUs or drivers whose 2x MSAA misrenders. It cannot turn the game's multisampling off, and the compatibility choice costs more GPU time. The game sets the Xenos `native_2x_msaa` from it at every start, before the GPU starts, also replacing a `native_2x_msaa = false` that older launchers saved for "Off". The GPU reads it only at start, so changing it restarts the game once when you press PLAY.
 
 Bloom scales the intensity of the game's own bloom: Reduced halves its gains and Off sets them to zero. The bright geometry, colors and HUD are not changed, and the menus lose their glow too. Original is the default and leaves the game's rendering unchanged. A missing or unknown value is treated as Original. Like Frame rate, it applies on PLAY without a restart. Off does not change performance.
+
+Smooth glow keeps the precision of the game's floating-point render targets when they are copied into the textures of the next bloom pass, instead of the 10-bit formats of the original copies. The faint glow around the stars and lights then fades out smoothly rather than ending in a flat, hard-edged step. HDR turns it on too. The GPU reads it only at start, so changing it restarts the game once when you press PLAY.
+
+HDR outputs an FP16 scRGB picture. The game's final pass, which adds the bloom to the scene, keeps the sums above white, so overlapping neon and explosions go brighter than the paper white while the background stays black. It needs Windows HDR on for the display; otherwise the picture is shown at SDR brightness. Paper white is the brightness of the game's normal white and of the overlays (frame counter, achievements, cheat menu), by default the SDR content brightness Windows uses for the display, so everything up to white looks as without HDR; peak brightness is where the highlights roll off, by default what the display reports. Paper white and peak apply on PLAY without a restart; HDR itself restarts the game once. `hdr_highlight_strength` (default 1) and `hdr_highlight_saturation` (default 0: each color channel rolls off on its own, so the hottest cores burn to white as in SDR; 1 keeps their hue) can be set in the settings file. `hdr_debug_view = true` shows where the picture goes past SDR white, red to yellow, instead of the picture. The log shows `HDR output: scRGB swap chain, display in HDR mode (peak N nits)`.
 
 Render resolution labels use the size the game renders at for the selected Aspect Ratio. At 16:9 Original that is 1280×720 (Original): 2x is 2560×1440, 3x 3840×2160, 4x 5120×2880; the other formats are in the table under Display. The 2x label of 16:9 is marked as recommended for 1440p displays. The size does not depend on the Window size.
 
@@ -153,6 +161,24 @@ Read-only, unchanged: the same `AchievementManager` and icon cache as the in-gam
 ## About
 
 Rows: Game files (Open game folder, when it exists), Saves and settings (Open data folder: the folder in use, and the row says whether that is the portable `user_data`, the system folder after a fallback, or the `--user_data_root` folder), Settings file, Reset all settings, Port version (the `project()` VERSION in `CMakeLists.txt`, passed in as `GW2_PORT_VERSION`), Libraries (ReXGlue SDK 0.10.0, TRG Launcher 1.1.0), Game (title 584108FF, game version 0.0.1.2), and the repository as a line of text.
+
+## In-game Options menu
+
+L3 + R3 (both sticks pressed in together) on the controller, or F1, opens the Options menu over the game; the same
+again, B or Escape closes it. It changes the same settings as the launcher, in the same player file, on the pages
+Display (Display mode, VSync), Graphics (Render resolution, Internal render resolution, Anti-aliasing, Multisampling,
+Texture filtering, Bloom, Smooth glow), HDR (HDR, paper white, peak), Gameplay (Frame rate, the title and the corner
+counter), Controls (Vibration, Keyboard) and Cheats. Window size, Monitor, Aspect Ratio and the Graphics card stay in
+the launcher.
+
+- Controller: LB / RB change the page, the D-pad or left stick picks a row and steps its value, A goes to the next
+  value. Keyboard: Q / E or Tab, the arrows, Enter or Space. The mouse works too.
+- A change the game reads while playing applies at once (frame rate, bloom, HDR brightness, counters, cheats). Rows
+  marked "(restart)" take effect when the game starts: the menu then offers Y / R "Restart now", which saves the
+  settings and starts the game again in a new window, skipping the launcher once.
+- The settings are saved when the menu closes. While it is open the game gets no controller or keyboard input, and it
+  is told that the system UI is up (`XN_SYS_UI`), as the Xbox 360 guide does.
+- The game never sees the L3 + R3 pair: while both are held they are removed from its controller state.
 
 ## Launcher window
 
