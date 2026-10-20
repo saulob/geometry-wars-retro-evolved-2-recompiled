@@ -19,6 +19,7 @@
 #include "launcher.h"
 #include "launcher_platform.h"
 #include "live_fix.h"
+#include "options_menu.h"
 
 namespace gw2 {
 namespace {
@@ -242,7 +243,8 @@ bool CheatMenuOpen() {
 bool GameInputActive() {
   rex::ui::ImGuiDrawer* drawer = g_drawer.load(std::memory_order_acquire);
   const bool pointer_over_overlay = drawer && drawer->HasDialogs() && drawer->GetIO().WantCaptureMouse;
-  return GameInputAllowed(CheatMenuOpen(), live::AchievementsHoldInput(), pointer_over_overlay);
+  return GameInputAllowed(CheatMenuOpen() || OptionsMenuOpen(), live::AchievementsHoldInput(),
+                          pointer_over_overlay);
 }
 
 }  // namespace gw2

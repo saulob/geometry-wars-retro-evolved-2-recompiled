@@ -1,6 +1,7 @@
 #pragma once
 
 #include <algorithm>
+#include <cstdint>
 #include <cstdio>
 #include <cstdlib>
 #include <optional>
@@ -14,6 +15,7 @@
 #include "launcher_placement.h"
 
 struct ImGuiIO;
+enum ImGuiKey : int;
 
 namespace gw2 {
 
@@ -146,8 +148,12 @@ class LauncherGamepad {
  public:
   void Update(ImGuiIO& io);
   void Release(ImGuiIO& io);
+  // Whether a controller is read, and its buttons as of the last Update (ImGui sees them a frame later).
+  bool connected() const { return pad_ >= 0; }
+  bool Held(ImGuiKey key) const;
 
  private:
+  uint32_t held_ = 0;  // bit i: kButtonKeys[i] is down
   int pad_ = -1;
   double next_scan_ = 0.0;
 #if !defined(_WIN32)

@@ -11,6 +11,8 @@ namespace gw2::live {
 struct AppBridge {
   std::function<void()> open_achievements;
   std::function<void()> close_achievements;
+  // L3 + R3 pressed together on a controller the game reads: the in-game Options menu.
+  std::function<void()> toggle_options;
 };
 
 struct InstallParams {

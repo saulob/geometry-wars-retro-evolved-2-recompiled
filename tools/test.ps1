@@ -30,6 +30,7 @@ $FrameLimiterExe = Join-Path $OutDir 'frame_limiter_tests.exe'
 $PlacementExe = Join-Path $OutDir 'launcher_placement_tests.exe'
 $UserDataExe = Join-Path $OutDir 'user_data_tests.exe'
 $CheatsExe = Join-Path $OutDir 'cheats_tests.exe'
+$OptionsMenuExe = Join-Path $OutDir 'options_menu_tests.exe'
 $AdapterExe = Join-Path $OutDir 'graphics_adapter_tests.exe'
 $AspectExe = Join-Path $OutDir 'aspect_ratio_tests.exe'
 
@@ -98,6 +99,9 @@ try {
         (Join-Path $Root 'tests\cheats_tests.cpp') -o $CheatsExe
     if ($LASTEXITCODE) { throw "Test build failed ($LASTEXITCODE)" }
     & $ClangXX -std=c++23 -O1 -Wall -Wextra -I (Join-Path $Root 'src') `
+        (Join-Path $Root 'tests\options_menu_tests.cpp') -o $OptionsMenuExe
+    if ($LASTEXITCODE) { throw "Test build failed ($LASTEXITCODE)" }
+    & $ClangXX -std=c++23 -O1 -Wall -Wextra -I (Join-Path $Root 'src') `
         (Join-Path $Root 'tests\graphics_adapter_tests.cpp') (Join-Path $Root 'src\graphics_adapters.cpp') `
         -ldxgi -ld3d12 -o $AdapterExe
     if ($LASTEXITCODE) { throw "Test build failed ($LASTEXITCODE)" }
@@ -127,6 +131,8 @@ if ($LASTEXITCODE) { throw "Frame limiter tests failed ($LASTEXITCODE)" }
 if ($LASTEXITCODE) { throw "Launcher placement tests failed ($LASTEXITCODE)" }
 & $SettingsExe
 if ($LASTEXITCODE) { throw "Launcher settings tests failed ($LASTEXITCODE)" }
+& $OptionsMenuExe
+if ($LASTEXITCODE) { throw "Options menu tests failed ($LASTEXITCODE)" }
 & $UserDataExe
 if ($LASTEXITCODE) { throw "User data tests failed ($LASTEXITCODE)" }
 & $CheatsExe

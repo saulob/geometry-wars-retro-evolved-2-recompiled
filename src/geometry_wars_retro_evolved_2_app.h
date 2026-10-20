@@ -25,6 +25,7 @@
 #include "launcher_platform.h"
 #include "launcher_settings.h"
 #include "live_fix.h"
+#include "options_menu.h"
 #include "rumble.h"
 #include "user_data.h"
 #include "window_host.h"
@@ -197,6 +198,7 @@ class GeometryWarsRetroEvolved2App : public rex::ReXApp {
         .bridge = {
             .open_achievements = [this] { app_context().CallInUIThreadDeferred([this] { OpenAchievements(); }); },
             .close_achievements = [this] { app_context().CallInUIThreadDeferred([this] { CloseAchievements(); }); },
+            .toggle_options = [] { gw2::ToggleOptionsMenu(); },
         },
     });
   }
@@ -208,6 +210,7 @@ class GeometryWarsRetroEvolved2App : public rex::ReXApp {
       gw2::rumble::Shutdown(input);
       input->Shutdown();
     }
+    gw2::DetachOptionsMenu();
     gw2::DetachCheatMenu();
     gw2::DetachWindowHost();
     CloseAchievements();
@@ -250,7 +253,29 @@ class GeometryWarsRetroEvolved2App : public rex::ReXApp {
     if (!window() || !imgui_drawer()) {
       return;
     }
-    gw2::AttachCheatMenu(window(), imgui_drawer(), [this] { return !achievements_; });
+    gw2::AttachCheatMenu(window(), imgui_drawer(), [this] { return !achievements_ && !gw2::OptionsMenuOpen(); });
+    gw2::SetOptionsMenuPoster([this](std::function<void()> work) {
+      app_context().CallInUIThreadDeferred(std::move(work));
+    });
+    gw2::AttachOptionsMenu(
+        window(), imgui_drawer(),
+        {.settings = settings_.get(),
+         .can_open = [this] { return !achievements_ && !gw2::CheatMenuOpen(); },
+         // XN_SYS_UI: the game pauses as it would for the Xbox 360 guide.
+         .set_system_ui =
+             [this](bool open) {
+               if (auto* kernel = runtime() ? runtime()->kernel_state() : nullptr) {
+                 kernel->BroadcastNotification(kXNotificationSystemUI, open ? 1 : 0);
+               }
+             },
+         .set_fullscreen =
+             [this](bool fullscreen) {
+               if (window()) {
+                 window()->SetFullscreen(fullscreen);
+               }
+               cvars_.Assign(gw2::kFullscreenKey, fullscreen ? "true" : "false");
+             },
+         .restart = [this] { return RestartInNewWindow(); }});
     // Replaces ReXApp's own callback, which the menu's version repeats.
     if (auto* input = static_cast<rex::input::InputSystem*>(runtime()->input_system())) {
       input->SetActiveCallback(gw2::GameInputActive);
@@ -286,7 +311,8 @@ class GeometryWarsRetroEvolved2App : public rex::ReXApp {
   }
 
   void OpenAchievements() {
-    if (achievements_ || gw2::CheatMenuOpen() || !runtime() || !runtime()->kernel_state() || !imgui_drawer() ||
+    if (achievements_ || gw2::CheatMenuOpen() || gw2::OptionsMenuOpen() || !runtime() ||
+        !runtime()->kernel_state() || !imgui_drawer() ||
         !immediate_drawer()) return;
     achievements_ = std::make_unique<gw2::AchievementsOverlay>(
         imgui_drawer(), immediate_drawer(), runtime(), &achievements(),
@@ -302,6 +328,8 @@ class GeometryWarsRetroEvolved2App : public rex::ReXApp {
     achievements_.reset();
     gw2::live::SetAchievementsModal(false);
   }
+
+  static constexpr uint32_t kXNotificationSystemUI = 0x9;
 
   std::unique_ptr<gw2::AchievementsOverlay> achievements_;
   std::filesystem::path shipped_config_;

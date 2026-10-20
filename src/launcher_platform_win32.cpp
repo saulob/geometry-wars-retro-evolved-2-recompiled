@@ -92,6 +92,10 @@ constexpr ButtonKey kButtonKeys[] = {
     {ImGuiKey_GamepadDpadRight, XINPUT_GAMEPAD_DPAD_RIGHT},
     {ImGuiKey_GamepadDpadUp, XINPUT_GAMEPAD_DPAD_UP},
     {ImGuiKey_GamepadDpadDown, XINPUT_GAMEPAD_DPAD_DOWN},
+    {ImGuiKey_GamepadL1, XINPUT_GAMEPAD_LEFT_SHOULDER},
+    {ImGuiKey_GamepadR1, XINPUT_GAMEPAD_RIGHT_SHOULDER},
+    {ImGuiKey_GamepadL3, XINPUT_GAMEPAD_LEFT_THUMB},
+    {ImGuiKey_GamepadR3, XINPUT_GAMEPAD_RIGHT_THUMB},
 };
 
 struct StickKey {
@@ -250,6 +254,7 @@ void LauncherGamepad::Update(ImGuiIO& io) {
   XINPUT_STATE state{};
   if (pad_ < 0 || GetPadState(DWORD(pad_), &state) != ERROR_SUCCESS) {
     pad_ = -1;
+    held_ = 0;
     // Polling an empty slot is slow, so look for a controller once a second.
     if (ImGui::GetTime() < next_scan_) {
       return;
@@ -266,8 +271,11 @@ void LauncherGamepad::Update(ImGuiIO& io) {
   }
   io.BackendFlags |= ImGuiBackendFlags_HasGamepad;
   const XINPUT_GAMEPAD& pad = state.Gamepad;
-  for (const ButtonKey& b : kButtonKeys) {
-    io.AddKeyEvent(b.key, (pad.wButtons & b.mask) != 0);
+  held_ = 0;
+  for (size_t i = 0; i < std::size(kButtonKeys); ++i) {
+    const bool down = (pad.wButtons & kButtonKeys[i].mask) != 0;
+    io.AddKeyEvent(kButtonKeys[i].key, down);
+    held_ |= uint32_t(down) << i;
   }
   for (const StickKey& s : kStickKeys) {
     const int value = s.horizontal ? pad.sThumbLX : pad.sThumbLY;
@@ -276,7 +284,17 @@ void LauncherGamepad::Update(ImGuiIO& io) {
   }
 }
 
+bool LauncherGamepad::Held(ImGuiKey key) const {
+  for (size_t i = 0; i < std::size(kButtonKeys); ++i) {
+    if (kButtonKeys[i].key == key) {
+      return (held_ >> i) & 1;
+    }
+  }
+  return false;
+}
+
 void LauncherGamepad::Release(ImGuiIO& io) {
+  held_ = 0;
   for (const ButtonKey& b : kButtonKeys) {
     io.AddKeyEvent(b.key, false);
   }

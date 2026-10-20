@@ -41,6 +41,10 @@ constexpr ButtonKey kButtonKeys[] = {
     {ImGuiKey_GamepadDpadRight, SDL_GAMEPAD_BUTTON_DPAD_RIGHT},
     {ImGuiKey_GamepadDpadUp, SDL_GAMEPAD_BUTTON_DPAD_UP},
     {ImGuiKey_GamepadDpadDown, SDL_GAMEPAD_BUTTON_DPAD_DOWN},
+    {ImGuiKey_GamepadL1, SDL_GAMEPAD_BUTTON_LEFT_SHOULDER},
+    {ImGuiKey_GamepadR1, SDL_GAMEPAD_BUTTON_RIGHT_SHOULDER},
+    {ImGuiKey_GamepadL3, SDL_GAMEPAD_BUTTON_LEFT_STICK},
+    {ImGuiKey_GamepadR3, SDL_GAMEPAD_BUTTON_RIGHT_STICK},
 };
 
 // The left stick dead zone XInput uses. SDL's Y axis points down.
@@ -564,6 +568,7 @@ void LauncherGamepad::Update(ImGuiIO& io) {
       SDL_CloseGamepad(pad);
     }
     pad_ = -1;
+    held_ = 0;
     if (ImGui::GetTime() < next_scan_) {
       return;
     }
@@ -579,8 +584,11 @@ void LauncherGamepad::Update(ImGuiIO& io) {
     pad_ = int(SDL_GetGamepadID(pad));
   }
   io.BackendFlags |= ImGuiBackendFlags_HasGamepad;
-  for (const ButtonKey& b : kButtonKeys) {
-    io.AddKeyEvent(b.key, SDL_GetGamepadButton(pad, b.button));
+  held_ = 0;
+  for (size_t i = 0; i < std::size(kButtonKeys); ++i) {
+    const bool down = SDL_GetGamepadButton(pad, kButtonKeys[i].button);
+    io.AddKeyEvent(kButtonKeys[i].key, down);
+    held_ |= uint32_t(down) << i;
   }
   for (const StickKey& s : kStickKeys) {
     const int value = s.direction * int(SDL_GetGamepadAxis(pad, s.axis));
@@ -589,7 +597,17 @@ void LauncherGamepad::Update(ImGuiIO& io) {
   }
 }
 
+bool LauncherGamepad::Held(ImGuiKey key) const {
+  for (size_t i = 0; i < std::size(kButtonKeys); ++i) {
+    if (kButtonKeys[i].key == key) {
+      return (held_ >> i) & 1;
+    }
+  }
+  return false;
+}
+
 void LauncherGamepad::Release(ImGuiIO& io) {
+  held_ = 0;
   for (const ButtonKey& b : kButtonKeys) {
     io.AddKeyEvent(b.key, false);
   }

@@ -48,6 +48,7 @@ set(GW2_SOURCES
     src/achievements_overlay.cpp
     src/aspect_render.cpp
     src/cheat_menu.cpp
+    src/options_menu.cpp
     src/cheat_hooks.cpp
     src/cheats.cpp
     src/bloom_fix.cpp
@@ -195,6 +196,7 @@ gw2_add_test(frame_limiter_tests src/frame_wait.cpp)
 gw2_add_test(launcher_placement_tests)
 gw2_add_test(user_data_tests src/user_data.cpp)
 gw2_add_test(cheats_tests)
+gw2_add_test(options_menu_tests)
 target_compile_definitions(cheats_tests PRIVATE GW2_SRC_DIR="${CMAKE_CURRENT_SOURCE_DIR}/src")
 # TRG's settings and platform sources without its ImGui dependency; C++17 like the launcher library.
 add_library(gw2_trg_test_support STATIC EXCLUDE_FROM_ALL
