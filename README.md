@@ -202,6 +202,8 @@ Geometry Wars: Retro Evolved 2 Recompiled is maintained and developed in my free
 <p align="center">
 <a href="https://github.com/sponsors/saulob" target="_blank"><img src="https://img.shields.io/badge/GitHub%20Sponsors-Sponsor-EA4AAA?style=for-the-badge&logo=githubsponsors&logoColor=white" alt="GitHub Sponsors"></a>
 </p>
+
+
 ## Credits
 
 - Geometry Wars: Retro Evolved 2 by Bizarre Creations, published by Microsoft Game Studios for Xbox Live Arcade (2008). This is an unofficial fan-made PC port. It is not affiliated with or endorsed by them or by any rights holder, and it contains none of their files.
