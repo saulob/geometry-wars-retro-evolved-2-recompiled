@@ -195,6 +195,13 @@ How the launcher, settings and installer work is described in [docs/launcher.md]
 - [Saves and settings: the portable user_data folder](docs/user-data.md)
 - [Linux and Steam Deck](docs/linux.md)
 
+## Sponsoring
+
+Geometry Wars: Retro Evolved 2 Recompiled is maintained and developed in my free time. If you enjoy the project or find it useful, consider supporting its continued development.
+
+<p align="center">
+<a href="https://github.com/sponsors/saulob" target="_blank"><img src="https://img.shields.io/badge/GitHub%20Sponsors-Sponsor-EA4AAA?style=for-the-badge&logo=githubsponsors&logoColor=white" alt="GitHub Sponsors"></a>
+</p>
 ## Credits
 
 - Geometry Wars: Retro Evolved 2 by Bizarre Creations, published by Microsoft Game Studios for Xbox Live Arcade (2008). This is an unofficial fan-made PC port. It is not affiliated with or endorsed by them or by any rights holder, and it contains none of their files.
